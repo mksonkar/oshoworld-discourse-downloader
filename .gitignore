@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual env
+.venv/
+venv/
+
+# Downloads / media
+downloads/
+downloads_hindi/
+backup-versions/
+*.mp3
+
+# Cache / generated data
+cache/
+structure.json
+series_index.json
+*.pkl
+*.pickle
+
+# OS junk
+.DS_Store
+Thumbs.db
