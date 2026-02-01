@@ -4,12 +4,13 @@ import json
 import time
 import requests
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BASE = "https://oshoworld.com"
 OUT_DIR = "downloads"
 STRUCTURE_FILE = "structure.json"
 CHUNK_SIZE = 1024 * 1024  # 1 MB
-
+MAX_WORKERS = 4
 
 # -------------------- Utilities --------------------
 
@@ -57,7 +58,7 @@ class SeriesProgress:
 
 def load_structure():
     if not os.path.exists(STRUCTURE_FILE):
-        raise RuntimeError("structure.json not found. Run structure probe first.")
+        raise RuntimeError("structure.json not found. Run structure_cache.py first.")
     with open(STRUCTURE_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -124,13 +125,26 @@ def download_entry(entry):
         episodes = entry["episodes"]
         total_eps = len(episodes)
 
-        total_bytes = sum(int(ep.get("size", 0)) for ep in episodes if ep.get("size"))
         progress = SeriesProgress(total_eps)
-
         folder = Path(OUT_DIR) / sanitize(entry["title"])
 
-        for i, ep in enumerate(episodes, 1):
-            download_episode(ep, folder, i, total_eps, progress)
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = []
+
+            for i, ep in enumerate(episodes, 1):
+                futures.append(
+                    executor.submit(
+                        download_episode,
+                        ep,
+                        folder,
+                        i,
+                        total_eps,
+                        progress,
+                    )
+                )
+
+            for f in as_completed(futures):
+                f.result()
 
     # Case 2: series with sub-series (e.g. Geeta Darshan)
     else:
@@ -145,11 +159,25 @@ def download_entry(entry):
             )
 
             progress = SeriesProgress(total_eps)
-
             folder = Path(OUT_DIR) / sanitize(entry["title"]) / sanitize(ss["title"])
 
-            for i, ep in enumerate(episodes, 1):
-                download_episode(ep, folder, i, total_eps, progress)
+            with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                futures = []
+
+                for i, ep in enumerate(episodes, 1):
+                    futures.append(
+                        executor.submit(
+                            download_episode,
+                            ep,
+                            folder,
+                            i,
+                            total_eps,
+                            progress,
+                        )
+                    )
+
+                for f in as_completed(futures):
+                    f.result()
 
     print(f"=== Finished: {entry['title']} ===\n")
 
