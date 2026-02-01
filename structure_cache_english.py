@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# structure_cache_eng.py
-# Builds structure_eng.json for English Osho audios
+# structure_cache_english.py
+# Builds structure_english.json for English Osho audios
 
 import requests
 import re
@@ -19,7 +19,7 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-OUT_FILE = Path("structure_eng.json")
+OUT_FILE = Path("structure_english.json")
 
 
 # -----------------------------
@@ -57,7 +57,7 @@ def get_json(url):
 # core logic
 # -----------------------------
 def fetch_all_series():
-    print("[*] Fetching English series list")
+    print("[*] Fetching English series list...")
 
     page = 1
     all_items = []
@@ -67,8 +67,6 @@ def fetch_all_series():
     per_page = len(first["items"])
     pages = math.ceil(total / per_page)
 
-    print(f"[i] Total expected series: {total}")
-
     all_items.extend(first["items"])
 
     for p in range(2, pages + 1):
@@ -76,6 +74,8 @@ def fetch_all_series():
         data = post(API_SERIES, {"page": p, "sortBy": "name", "language": "english"})
         all_items.extend(data["items"])
         time.sleep(0.2)
+
+    print(f"[✓] Total series fetched: {len(all_items)}")
 
     return all_items
 
@@ -134,12 +134,12 @@ def build_structure():
         "series": [],
     }
 
-    for s in series_list:
+    for idx, s in enumerate(series_list, 1):
         title = s["title"]
         slug = s["slug"]
         count = s.get("count")
 
-        print(f"\n=== SERIES: {title} ===")
+        print(f"\n=== [{idx}] SERIES: {title} ===")
 
         series_id = resolve_series_id(build_id, slug)
         if not series_id:
@@ -160,7 +160,7 @@ def build_structure():
                 }
             )
 
-        print(f"  [+] Episodes: {len(episodes)}")
+        print(f"    [+] Episodes: {len(episodes)}")
 
         structure["series"].append(
             {
@@ -177,10 +177,14 @@ def build_structure():
 
 def main():
     print("[*] Building English audio cache")
+    start = time.time()
     structure = build_structure()
 
     OUT_FILE.write_text(json.dumps(structure, indent=2, ensure_ascii=False))
-    print(f"\n[✓] Written {OUT_FILE}")
+    elapsed = time.time() - start
+    print(f"\n[✓] English cache written: {OUT_FILE}")
+    print(f"[✓] Total series cached: {len(structure['series'])}")
+    print(f"[✓] Time taken: {elapsed:.1f}s")
 
 
 if __name__ == "__main__":

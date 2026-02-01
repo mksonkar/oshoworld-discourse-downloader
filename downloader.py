@@ -205,6 +205,9 @@ def download_entry(entry, out_dir):
 
 def main():
 
+    ensure_cache("hindi")
+    ensure_cache("english")
+
     print("=" * 40)
     print("        OSHO DISCOURSE DOWNLOADER")
     print("=" * 40)
@@ -216,9 +219,6 @@ def main():
     mode = input("> ").strip()
     if mode == "3":
         rx = re.compile(input("Regex (global): "), re.I)
-
-        ensure_cache("hindi")
-        ensure_cache("english")
 
         hindi_series = load_structure("hindi")
         english_series = load_structure("english")
@@ -266,7 +266,7 @@ def main():
     OUT_DIR = BASE_OUT_DIR / lang
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    ensure_cache(lang)
+    # ensure_cache(lang)
     series = load_structure(lang)
 
     print("1. Regex search")
