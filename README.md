@@ -30,7 +30,6 @@ python -m venv .venv
 source .venv/bin/activate
 pip install requests
 ```
-```
 ### 3. Run the downloader script
 ```bash
 python downloader.py
