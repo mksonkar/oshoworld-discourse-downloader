@@ -2,15 +2,20 @@ import os
 import re
 import json
 import time
+import sys
 import requests
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BASE = "https://oshoworld.com"
-OUT_DIR = "downloads"
-STRUCTURE_FILE = "structure.json"
+BASE_OUT_DIR = Path("downloads")
 CHUNK_SIZE = 1024 * 1024  # 1 MB
 MAX_WORKERS = 4
+
+STRUCTURE_FILE = {
+    "hindi": "structure.json",
+    "english": "structure_eng.json",
+}
 
 # -------------------- Utilities --------------------
 
@@ -29,6 +34,22 @@ def human_time(seconds: float) -> str:
     if m:
         return f"{m}m {s}s"
     return f"{s}s"
+
+
+def select_language():
+    print("Select language:")
+    print("1. Hindi")
+    print("2. English")
+
+    choice = input("> ").strip()
+
+    if choice == "1":
+        return "hindi"
+    elif choice == "2":
+        return "english"
+    else:
+        print("Invalid choice")
+        sys.exit(1)
 
 
 # -------------------- Progress Tracker --------------------
@@ -56,11 +77,20 @@ class SeriesProgress:
 # -------------------- Load Cached Structure --------------------
 
 
-def load_structure():
-    if not os.path.exists(STRUCTURE_FILE):
-        raise RuntimeError("structure.json not found. Run structure_cache.py first.")
-    with open(STRUCTURE_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+def load_structure(lang):
+    path = STRUCTURE_FILE[lang]
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Hindi format → list
+    if isinstance(data, list):
+        return data
+
+    # English format → { language, series }
+    if isinstance(data, dict) and "series" in data:
+        return data["series"]
+
+    raise ValueError("Unknown structure format")
 
 
 # -------------------- Episode Download --------------------
@@ -105,49 +135,22 @@ def download_episode(ep, folder, idx, total_eps, progress):
                     last_print = now
 
         elapsed = time.time() - episode_start
-        progress.mark_episode_done(elapsed)
 
         if file_size and written != file_size:
             print(f"    [!] Size mismatch for {name}")
         else:
-            progress.mark_episode_done(time.time() - episode_start)
+            progress.mark_episode_done(elapsed)
             print(f"    [✓] Done: {name}")
 
 
 # -------------------- Entry Download --------------------
 
 
-def download_entry(entry):
-    print(f"\n=== Downloading Series: {entry['slug']} ===")
+def download_entry(entry, out_dir):
+    print(f"\n=== Downloading Series: {entry['title']} ===")
 
-    # Case 1: normal series
-    if entry["type"] == "series":
-        episodes = entry["episodes"]
-        total_eps = len(episodes)
-
-        progress = SeriesProgress(total_eps)
-        folder = Path(OUT_DIR) / entry["slug"]
-
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            futures = []
-
-            for i, ep in enumerate(episodes, 1):
-                futures.append(
-                    executor.submit(
-                        download_episode,
-                        ep,
-                        folder,
-                        i,
-                        total_eps,
-                        progress,
-                    )
-                )
-
-            for f in as_completed(futures):
-                f.result()
-
-    # Case 2: series with sub-series (e.g. Geeta Darshan)
-    else:
+    # Case 1: container with subseries (Hindi only)
+    if "subseries" in entry:
         total_sub = len(entry["subseries"])
 
         for si, ss in enumerate(entry["subseries"], 1):
@@ -155,29 +158,37 @@ def download_entry(entry):
             total_eps = len(episodes)
 
             print(
-                f"\n--- Sub-series [{si}/{total_sub}]: {ss['slug']} ({total_eps} episodes) ---"
+                f"\n--- Sub-series [{si}/{total_sub}]: {ss['title']} ({total_eps} episodes) ---"
             )
 
             progress = SeriesProgress(total_eps)
-            folder = Path(OUT_DIR) / entry["slug"] / ss["slug"]
+            folder = out_dir / entry["title"] / ss["title"]
 
             with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                futures = []
-
-                for i, ep in enumerate(episodes, 1):
-                    futures.append(
-                        executor.submit(
-                            download_episode,
-                            ep,
-                            folder,
-                            i,
-                            total_eps,
-                            progress,
-                        )
+                futures = [
+                    executor.submit(
+                        download_episode, ep, folder, i, total_eps, progress
                     )
-
+                    for i, ep in enumerate(episodes, 1)
+                ]
                 for f in as_completed(futures):
                     f.result()
+
+    # Case 2: normal series (ALL English + most Hindi)
+    else:
+        episodes = entry["episodes"]
+        total_eps = len(episodes)
+
+        progress = SeriesProgress(total_eps)
+        folder = out_dir / entry["title"]
+
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = [
+                executor.submit(download_episode, ep, folder, i, total_eps, progress)
+                for i, ep in enumerate(episodes, 1)
+            ]
+            for f in as_completed(futures):
+                f.result()
 
     print(f"=== Finished: {entry['title']} ===\n")
 
@@ -186,7 +197,18 @@ def download_entry(entry):
 
 
 def main():
-    structure = load_structure()
+    lang = select_language()
+    structure_file = STRUCTURE_FILE[lang]
+
+    OUT_DIR = BASE_OUT_DIR / lang
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    if not Path(structure_file).exists():
+        print(f"[!] Cache file not found: {structure_file}")
+        print("Run the appropriate structure_cache script first.")
+        sys.exit(1)
+
+    series = load_structure(lang)
 
     print("1. Regex search")
     print("2. List all")
@@ -194,9 +216,9 @@ def main():
 
     if choice == "1":
         rx = re.compile(input("Regex: "), re.I)
-        picks = [s for s in structure if rx.search(s["title"])]
+        picks = [s for s in series if rx.search(s["title"])]
     else:
-        picks = structure
+        picks = series
 
     for i, s in enumerate(picks, 1):
         print(f"[{i}] {s['title']}")
@@ -210,7 +232,7 @@ def main():
         targets = [picks[i] for i in idxs if 0 <= i < len(picks)]
 
     for entry in targets:
-        download_entry(entry)
+        download_entry(entry, OUT_DIR)
 
 
 if __name__ == "__main__":
