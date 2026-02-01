@@ -31,7 +31,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install requests tqdm
 ```
-### (Optional) Run the scraper once to generate list (Pre-generated list already available)
+### 3. Run the scraper once to generate list of discourses
 ```bash
 python structure_cache.py
 ```
