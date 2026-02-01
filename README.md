@@ -35,7 +35,7 @@ pip install requests tqdm
 ```bash
 python structure_cache.py
 ```
-### 3. Run the script
+### 3. Run the downloader script
 ```bash
 python downloader.py
 ```

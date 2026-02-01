@@ -15,7 +15,7 @@ backup-versions/
 
 # Cache / generated data
 cache/
-structure.json
+structure*.json
 series_index.json
 *.pkl
 *.pickle
