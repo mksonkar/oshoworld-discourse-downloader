@@ -22,7 +22,7 @@ A python based CLI tool to fetch and download all **Osho English & Hindi audio d
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/<your-username>/oshoworld-scraper.git
+git clone https://github.com/mksonkar/oshoworld-discourse-downloader.git
 cd oshoworld-scraper
 ```
 ### 2. Install dependencies
@@ -31,7 +31,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install requests tqdm
 ```
-### Run the scraper once to generate list (optional: pre-generated list already available)
+### (Optional) Run the scraper once to generate list (Pre-generated list already available)
 ```bash
 python structure_cache.py
 ```
