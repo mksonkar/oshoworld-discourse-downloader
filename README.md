@@ -30,10 +30,6 @@ python -m venv .venv
 source .venv/bin/activate
 pip install requests
 ```
-### 3. Run the scraper once to generate and save the list of discourses
-```bash
-python structure_cache_english.py
-python structure_cache_hindi.py
 ```
 ### 3. Run the downloader script
 ```bash
