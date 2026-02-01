@@ -118,7 +118,7 @@ def download_episode(ep, folder, idx, total_eps, progress):
 
 
 def download_entry(entry):
-    print(f"\n=== Downloading Series: {entry['title']} ===")
+    print(f"\n=== Downloading Series: {entry['slug']} ===")
 
     # Case 1: normal series
     if entry["type"] == "series":
@@ -126,7 +126,7 @@ def download_entry(entry):
         total_eps = len(episodes)
 
         progress = SeriesProgress(total_eps)
-        folder = Path(OUT_DIR) / sanitize(entry["title"])
+        folder = Path(OUT_DIR) / entry["slug"]
 
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = []
@@ -155,11 +155,11 @@ def download_entry(entry):
             total_eps = len(episodes)
 
             print(
-                f"\n--- Sub-series [{si}/{total_sub}]: {ss['title']} ({total_eps} episodes) ---"
+                f"\n--- Sub-series [{si}/{total_sub}]: {ss['slug']} ({total_eps} episodes) ---"
             )
 
             progress = SeriesProgress(total_eps)
-            folder = Path(OUT_DIR) / sanitize(entry["title"]) / sanitize(ss["title"])
+            folder = Path(OUT_DIR) / entry["slug"] / ss["slug"]
 
             with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                 futures = []
