@@ -93,6 +93,44 @@ def load_structure(lang):
     raise ValueError("Unknown structure format")
 
 
+def load_series_only(lang):
+    structure_file = STRUCTURE_FILE[lang]
+    with open(structure_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    series = []
+
+    # English cache: already flat list of series
+    if lang == "english":
+        for s in data:
+            series.append(
+                {
+                    "language": "english",
+                    "entry": s,
+                }
+            )
+
+    # Hindi cache: mix of container + series
+    else:
+        for s in data:
+            if s.get("type") == "container":
+                series.append(
+                    {
+                        "language": "hindi",
+                        "entry": s,
+                    }
+                )
+            else:
+                series.append(
+                    {
+                        "language": "hindi",
+                        "entry": s,
+                    }
+                )
+
+    return series
+
+
 # -------------------- Episode Download --------------------
 
 
@@ -197,7 +235,65 @@ def download_entry(entry, out_dir):
 
 
 def main():
-    lang = select_language()
+
+    print("=" * 40)
+    print("        OSHO DISCOURSE DOWNLOADER")
+    print("=" * 40)
+    print("Select mode:")
+    print("  1. English")
+    print("  2. Hindi")
+    print("  3. Global search")
+    print("-" * 40)
+    mode = input("> ").strip()
+    if mode == "3":
+        rx = re.compile(input("Regex (global): "), re.I)
+
+        all_items = []
+
+        # English
+        with open(STRUCTURE_FILE["english"], "r", encoding="utf-8") as f:
+            eng = json.load(f)["series"]
+            for s in eng:
+                all_items.append(("english", s))
+
+        # Hindi
+        with open(STRUCTURE_FILE["hindi"], "r", encoding="utf-8") as f:
+            hin = json.load(f)
+            for s in hin:
+                all_items.append(("hindi", s))
+
+        matches = [(lang, s) for lang, s in all_items if rx.search(s["title"])]
+
+        if not matches:
+            print("[!] No matches found")
+            return
+
+        for i, (lang, s) in enumerate(matches, 1):
+            print(f"[{i}] ({lang.upper()}) {s['title']}")
+
+        sel = input("Select (comma or all): ").strip()
+
+        if sel.lower() == "all":
+            targets = matches
+        else:
+            idxs = [int(x) - 1 for x in sel.split(",") if x.isdigit()]
+            targets = [matches[i] for i in idxs if 0 <= i < len(matches)]
+
+        for lang, entry in targets:
+            out_dir = BASE_OUT_DIR / lang
+            out_dir.mkdir(parents=True, exist_ok=True)
+            download_entry(entry, out_dir)
+
+        return
+
+    if mode == "1":
+        lang = "english"
+    elif mode == "2":
+        lang = "hindi"
+    else:
+        print("Invalid choice")
+        return
+
     structure_file = STRUCTURE_FILE[lang]
 
     OUT_DIR = BASE_OUT_DIR / lang
@@ -209,10 +305,6 @@ def main():
         sys.exit(1)
 
     series = load_structure(lang)
-
-    print("1. Regex search")
-    print("2. List all")
-    choice = input("> ").strip()
 
     if choice == "1":
         rx = re.compile(input("Regex: "), re.I)
