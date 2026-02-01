@@ -13,8 +13,8 @@ CHUNK_SIZE = 1024 * 1024  # 1 MB
 MAX_WORKERS = 4
 
 STRUCTURE_FILE = {
-    "hindi": "structure.json",
-    "english": "structure_eng.json",
+    "hindi": "structure_hindi.json",
+    "english": "structure_english.json",
 }
 
 # -------------------- Utilities --------------------
@@ -200,7 +200,7 @@ def download_entry(entry, out_dir):
             )
 
             progress = SeriesProgress(total_eps)
-            folder = out_dir / entry["title"] / ss["title"]
+            folder = out_dir / entry["slug"] / ss["slug"]
 
             with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                 futures = [
@@ -218,7 +218,7 @@ def download_entry(entry, out_dir):
         total_eps = len(episodes)
 
         progress = SeriesProgress(total_eps)
-        folder = out_dir / entry["title"]
+        folder = out_dir / entry["slug"]
 
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = [
