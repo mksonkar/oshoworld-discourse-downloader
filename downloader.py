@@ -4,6 +4,7 @@ import json
 import time
 import sys
 import requests
+import subprocess
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -12,12 +13,34 @@ BASE_OUT_DIR = Path("downloads")
 CHUNK_SIZE = 1024 * 1024  # 1 MB
 MAX_WORKERS = 4
 
-STRUCTURE_FILE = {
-    "hindi": "structure_hindi.json",
-    "english": "structure_english.json",
+STRUCTURE_FILES = {
+    "hindi": {
+        "path": "structure_hindi.json",
+        "builder": ["python", "structure_cache_hindi.py"],
+    },
+    "english": {
+        "path": "structure_english.json",
+        "builder": ["python", "structure_cache_english.py"],
+    },
 }
 
 # -------------------- Utilities --------------------
+
+
+def ensure_cache(language):
+    info = STRUCTURE_FILES[language]
+    path = Path(info["path"])
+
+    if path.exists():
+        return
+
+    print(f"[!] Cache missing for {language}, building it now...")
+    print("One time process, it will take a few minutes")
+    result = subprocess.run(info["builder"])
+
+    if result.returncode != 0 or not path.exists():
+        print(f"[!] Failed to build cache for {language}")
+        sys.exit(1)
 
 
 def sanitize(name: str) -> str:
@@ -34,22 +57,6 @@ def human_time(seconds: float) -> str:
     if m:
         return f"{m}m {s}s"
     return f"{s}s"
-
-
-def select_language():
-    print("Select language:")
-    print("1. Hindi")
-    print("2. English")
-
-    choice = input("> ").strip()
-
-    if choice == "1":
-        return "hindi"
-    elif choice == "2":
-        return "english"
-    else:
-        print("Invalid choice")
-        sys.exit(1)
 
 
 # -------------------- Progress Tracker --------------------
@@ -78,7 +85,7 @@ class SeriesProgress:
 
 
 def load_structure(lang):
-    path = STRUCTURE_FILE[lang]
+    path = STRUCTURE_FILES[lang]["path"]
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -91,44 +98,6 @@ def load_structure(lang):
         return data["series"]
 
     raise ValueError("Unknown structure format")
-
-
-def load_series_only(lang):
-    structure_file = STRUCTURE_FILE[lang]
-    with open(structure_file, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    series = []
-
-    # English cache: already flat list of series
-    if lang == "english":
-        for s in data:
-            series.append(
-                {
-                    "language": "english",
-                    "entry": s,
-                }
-            )
-
-    # Hindi cache: mix of container + series
-    else:
-        for s in data:
-            if s.get("type") == "container":
-                series.append(
-                    {
-                        "language": "hindi",
-                        "entry": s,
-                    }
-                )
-            else:
-                series.append(
-                    {
-                        "language": "hindi",
-                        "entry": s,
-                    }
-                )
-
-    return series
 
 
 # -------------------- Episode Download --------------------
@@ -248,19 +217,17 @@ def main():
     if mode == "3":
         rx = re.compile(input("Regex (global): "), re.I)
 
+        ensure_cache("hindi")
+        ensure_cache("english")
+
+        hindi_series = load_structure("hindi")
+        english_series = load_structure("english")
+
         all_items = []
-
-        # English
-        with open(STRUCTURE_FILE["english"], "r", encoding="utf-8") as f:
-            eng = json.load(f)["series"]
-            for s in eng:
-                all_items.append(("english", s))
-
-        # Hindi
-        with open(STRUCTURE_FILE["hindi"], "r", encoding="utf-8") as f:
-            hin = json.load(f)
-            for s in hin:
-                all_items.append(("hindi", s))
+        for s in hindi_series:
+            all_items.append(("hindi", s))
+        for s in english_series:
+            all_items.append(("english", s))
 
         matches = [(lang, s) for lang, s in all_items if rx.search(s["title"])]
 
@@ -294,18 +261,17 @@ def main():
         print("Invalid choice")
         return
 
-    structure_file = STRUCTURE_FILE[lang]
+    structure_file = STRUCTURE_FILES[lang]["path"]
 
     OUT_DIR = BASE_OUT_DIR / lang
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    if not Path(structure_file).exists():
-        print(f"[!] Cache file not found: {structure_file}")
-        print("Run the appropriate structure_cache script first.")
-        sys.exit(1)
-
+    ensure_cache(lang)
     series = load_structure(lang)
 
+    print("1. Regex search")
+    print("2. List all")
+    choice = input("> ").strip()
     if choice == "1":
         rx = re.compile(input("Regex: "), re.I)
         picks = [s for s in series if rx.search(s["title"])]
@@ -328,4 +294,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n[!] Interrupted by user. Exiting cleanly.")
+        sys.exit(0)
