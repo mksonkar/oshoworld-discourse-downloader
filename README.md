@@ -22,7 +22,7 @@ A python based CLI tool to fetch and download all **Osho English & Hindi audio d
 ### 1. Clone the repo
 ```bash
 git clone https://github.com/mksonkar/oshoworld-discourse-downloader.git
-cd oshoworld-scraper
+cd oshoworld-discourse-downloader
 ```
 ### 2. Install dependencies
 ```bash
