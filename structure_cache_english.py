@@ -41,10 +41,22 @@ def get_build_id():
     return m.group(1)
 
 
-def post(url, payload):
-    r = requests.post(url, json=payload, headers=HEADERS, timeout=30)
-    r.raise_for_status()
-    return r.json()
+def post(url, payload, retries=3, delay=2):
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.post(
+                url,
+                json=payload,
+                headers=HEADERS,
+                timeout=30,
+            )
+            r.raise_for_status()
+            return r.json()
+        except requests.exceptions.RequestException as e:
+            if attempt == retries:
+                raise
+            print(f"    [!] Network error, retrying ({attempt}/{retries})...")
+            time.sleep(delay * attempt)
 
 
 def get_json(url):

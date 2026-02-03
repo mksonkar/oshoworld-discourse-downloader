@@ -38,9 +38,11 @@ def ensure_cache(language):
     print("One time process, it will take a few minutes")
     result = subprocess.run(info["builder"])
 
-    if result.returncode != 0 or not path.exists():
+    if not path.exists():
         print(f"[!] Failed to build cache for {language}")
-        sys.exit(1)
+        return False
+
+    return True
 
 
 def sanitize(name: str) -> str:

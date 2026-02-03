@@ -10,10 +10,23 @@ def log(msg):
     print(msg, flush=True)
 
 
-def post(path, payload):
-    r = requests.post(BASE + path, headers=HEADERS, json=payload, timeout=30)
-    r.raise_for_status()
-    return r.json()
+def post(path, payload, retries=3, delay=2):
+    url = BASE + path
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.post(
+                url,
+                headers=HEADERS,
+                json=payload,
+                timeout=30,
+            )
+            r.raise_for_status()
+            return r.json()
+        except requests.exceptions.RequestException as e:
+            if attempt == retries:
+                raise
+            print(f"    [!] Network error, retrying ({attempt}/{retries})...")
+            time.sleep(delay * attempt)
 
 
 def get_build_id():
