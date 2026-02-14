@@ -25,10 +25,17 @@ git clone https://github.com/mksonkar/oshoworld-discourse-downloader.git
 cd oshoworld-discourse-downloader
 ```
 ### 2. Install dependencies
+*Linux/Mac*
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install requests
+python -m pip install requests
+```
+*Windows (cmd)*
+```
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install requests
 ```
 ### 3. Run the downloader script
 ```bash
