@@ -16,11 +16,11 @@ MAX_WORKERS = 4
 STRUCTURE_FILES = {
     "hindi": {
         "path": "structure_hindi.json",
-        "builder": ["python", "structure_cache_hindi.py"],
+        "builder": ["python", "./tools/structure_cache_hindi.py"],
     },
     "english": {
         "path": "structure_english.json",
-        "builder": ["python", "structure_cache_english.py"],
+        "builder": ["python", "./tools/structure_cache_english.py"],
     },
 }
 
@@ -252,6 +252,7 @@ def main():
             out_dir = BASE_OUT_DIR / lang
             out_dir.mkdir(parents=True, exist_ok=True)
             download_entry(entry, out_dir)
+            print(f"Downloaded in ./{out_dir}/{entry['slug']}\n")
 
         return
 
